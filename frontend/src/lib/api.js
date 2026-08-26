@@ -25,7 +25,16 @@ export async function login({ email, code }) {
   return res.user
 }
 
+// 手机输入法（中文状态）常输出全角字符（＠、。、．）或误带空格，统一清洗后再校验/发送。
+// normalize('NFKC') 把全角转半角：＠→@、．→.、全角空格→半角空格。
+export const normalizeEmail = s => String(s || '')
+  .normalize('NFKC')
+  .replace(/[。．]/g, '.')          // 兜底：中文句号/全角点 → 半角点
+  .replace(/\s*@\s*/g, '@')        // 去掉 @ 两侧误输入的空白（如 "abc @ qq.com"）
+  .trim()
+  .toLowerCase()                    // 与后端一致，统一小写存储
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+export const isValidEmail = s => EMAIL_RE.test(normalizeEmail(s))
 
 /* ---------- admin console (separate session) ----------
  * The /admin console keeps its own bearer token in localStorage, fully independent

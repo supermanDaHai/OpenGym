@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useStore, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
-import { sendCode, register, login, EMAIL_RE } from '../lib/api.js'
+import { sendCode, register, login, normalizeEmail, isValidEmail } from '../lib/api.js'
 import { t } from '../lib/i18n.js'
 import { DEMO, REPO } from '../lib/demo.js'
 import Icon from '../components/Icon.jsx'
@@ -19,12 +19,18 @@ function useCountdown() {
   return [left, start]
 }
 
+// 邮箱校验失败时给出诊断（iOS 输入法常混入全角/隐藏字符，报错时把原文展示出来）
+const badEmail = email => {
+  console.error('[email] raw=', JSON.stringify(email), 'codepoints=', [...String(email)].map(c => c.codePointAt(0).toString(16)).join(' '))
+  return toast(`邮箱格式不正确，你输入的是「${email}」`)
+}
+
 // 邮箱 + 验证码输入行（登录/注册共用）
-function EmailCodeRow({ email, setEmail, code, setCode, purpose, toast, locked }) {
+function EmailCodeRow({ email, setEmail, code, setCode, purpose, toast, locked, emailRef }) {
   const [left, start] = useCountdown()
   const [sending, setSending] = useState(false)
   const send = async () => {
-    if (!EMAIL_RE.test(email)) { toast('请输入正确的邮箱地址'); return }
+    if (!isValidEmail(email)) return badEmail(email)
     setSending(true)
     try { await sendCode(email, purpose); toast(purpose === 'register' ? '验证码已发送，请查收邮箱' : '验证码已发送，请查收邮箱'); start() }
     catch (e) { toast(e.message || '发送失败，请稍后再试') }
@@ -33,8 +39,8 @@ function EmailCodeRow({ email, setEmail, code, setCode, purpose, toast, locked }
   return (
     <>
       <div className="row" style={{ gap: 8, alignItems: 'stretch' }}>
-        <input className="field grow" type="email" inputMode="email" placeholder="邮箱地址" autoComplete="email"
-          value={email} disabled={locked} onChange={e => setEmail(e.target.value.trim())}
+        <input ref={emailRef} className="field grow" type="email" inputMode="email" placeholder="邮箱地址" autoComplete="email"
+          value={email} disabled={locked} onChange={e => setEmail(normalizeEmail(e.target.value))}
           style={{ flex: 1, minWidth: 0 }} />
         <Button variant="plain" size="sm" style={{ whiteSpace: 'nowrap', padding: '0 14px' }} disabled={left > 0 || sending} onClick={send}>
           {left > 0 ? `${left}s 后重发` : sending ? '发送中…' : '获取验证码'}
@@ -69,7 +75,7 @@ export function AuthCard({ onDone }) {
   }
 
   const doLogin = async () => {
-    if (!EMAIL_RE.test(email)) { toast('请输入正确的邮箱地址'); return }
+    if (!isValidEmail(email)) return badEmail(email)
     if (code.length !== 6) { toast('请输入 6 位验证码'); return }
     setBusy(true)
     try { await finish(await login({ email, code })) }
@@ -79,7 +85,7 @@ export function AuthCard({ onDone }) {
 
   const doRegister = async () => {
     if (!name.trim()) { toast('请填写昵称'); return }
-    if (!EMAIL_RE.test(email)) { toast('请输入正确的邮箱地址'); return }
+    if (!isValidEmail(email)) return badEmail(email)
     if (code.length !== 6) { toast('请输入 6 位验证码'); return }
     if (!inviteCode.trim()) { toast('请输入邀请码'); return }
     setBusy(true)
@@ -103,13 +109,13 @@ export function AuthCard({ onDone }) {
       </div>
 
       {mode === 'register' && <>
-        <input ref={emailRef} className="field" placeholder="填写你的昵称即可" maxLength={40}
+        <input className="field" placeholder="填写你的昵称即可" maxLength={40}
           value={name} onChange={e => setName(e.target.value)} />
         <div style={{ height: 10 }} />
       </>}
 
       <EmailCodeRow email={email} setEmail={setEmail} code={code} setCode={setCode}
-        purpose={mode === 'register' ? 'register' : 'login'} toast={toast} locked={busy} />
+        purpose={mode === 'register' ? 'register' : 'login'} toast={toast} locked={busy} emailRef={emailRef} />
 
       {mode === 'register' && <>
         <div style={{ height: 10 }} />

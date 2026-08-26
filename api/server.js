@@ -243,8 +243,18 @@ const MAX_ATTEMPTS = 5;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// 与前端一致：手机输入法常输出全角字符（＠、。、．），统一清洗后再校验/存储。
+function normalizeEmail(s) {
+  return String(s || '')
+    .normalize('NFKC')
+    .replace(/[。．]/g, '.')
+    .replace(/\s*@\s*/g, '@')
+    .trim()
+    .toLowerCase();
+}
+
 async function issueCode(email, purpose) {
-  email = String(email || '').trim().toLowerCase();
+  email = normalizeEmail(email);
   if (!EMAIL_RE.test(email)) { const e = new Error('邮箱格式不正确'); e.status = 400; throw e; }
   const cur = codeStore.get(email);
   if (cur && Date.now() - cur.lastSent < CODE_COOLDOWN) {
@@ -386,7 +396,7 @@ const routes = {
 
   'POST /api/auth/register': async (req, res) => {
     const body = await readBody(req);
-    const email = String(body.email || '').trim().toLowerCase();
+    const email = normalizeEmail(body.email);
     const name = String(body.name || '').trim().slice(0, 40);
     if (!name) return json(res, 400, { error: '请填写昵称' });
     if (!EMAIL_RE.test(email)) return json(res, 400, { error: '邮箱格式不正确' });
@@ -415,7 +425,7 @@ const routes = {
 
   'POST /api/auth/login': async (req, res) => {
     const body = await readBody(req);
-    const email = String(body.email || '').trim().toLowerCase();
+    const email = normalizeEmail(body.email);
     if (!EMAIL_RE.test(email)) return json(res, 400, { error: '邮箱格式不正确' });
     const user = db.users.find(u => u.email === email);
     if (!user) return json(res, 404, { error: '该邮箱尚未注册' });
