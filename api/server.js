@@ -1,5 +1,5 @@
 /* opengym-api — email code + invite-code auth + per-user state storage for openGym
-   No framework, JSON-file storage, signed session cookies.
+   No framework, SQLite storage (better-sqlite3), signed session cookies.
    Authentication: e-mail + 6-digit code (SMTP), registration gated by invite codes.
    Admin dashboard: aggregate stats + invite management + user drill-down.          */
 import http from 'node:http';
@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import nodemailer from 'nodemailer';
 import webpush from 'web-push';
+import { openStore } from './db.js';
 
 const PORT = +(process.env.PORT || 3000);
 const DATA = process.env.DATA_DIR || '/data';
@@ -47,18 +48,23 @@ async function sendMail(to, subject, html) {
   await mailer.sendMail({ from: `"${APP_NAME}" <${SMTP_FROM}>`, to, subject, html });
 }
 
-/* ---------- secret + db ---------- */
+/* ---------- secret + SQLite store ---------- */
 const secretFile = path.join(DATA, 'secret');
 if (!fs.existsSync(secretFile)) fs.writeFileSync(secretFile, crypto.randomBytes(32).toString('hex'), { mode: 0o600 });
 const SECRET = fs.readFileSync(secretFile, 'utf8').trim();
 
-const dbFile = path.join(DATA, 'db.json');
-let db = { users: [], creds: [], subs: [], invites: [] };
-try { db = JSON.parse(fs.readFileSync(dbFile, 'utf8')); } catch {}
-db.users = db.users || [];
-db.creds = db.creds || [];
-db.subs = db.subs || [];
-db.invites = db.invites || [];
+// All data lives in SQLite (data/app.db). The four relational collections are kept
+// in memory as the working copy — exactly the shape the old db object had — and
+// persisted by saveDb() inside a transaction. Per-user state documents go straight
+// to the user_state table. Legacy db.json / state-*.json are migrated on first open.
+const store = openStore(DATA);
+const db = store.loadDb();
+
+// Working-set helpers: saveDb persists the four relational collections; readState /
+// writeState talk to the user_state table (each user's full state document).
+const saveDb = () => store.saveDb(db);
+const readState = uid => store.getState(uid);
+const writeState = (uid, obj) => store.putState(uid, obj);
 
 const isAdmin = user => !!user && (user.admin === true || (user.email && ADMIN_EMAILS.includes(String(user.email).toLowerCase())));
 
@@ -80,24 +86,6 @@ function migrateDb() {
   if (dirty) saveDb();
 }
 migrateDb();
-
-function saveDb() { atomicWrite(dbFile, JSON.stringify(db, null, 2)); }
-function atomicWrite(file, content) {
-  const tmp = file + '.tmp';
-  try {
-    fs.writeFileSync(tmp, content);
-    fs.renameSync(tmp, file);
-  } catch (e) {
-    // Windows: antivirus/editor can transiently lock the target file, making rename fail.
-    // Fall back to a direct write so data is never lost (atomicity is best-effort here).
-    try { fs.writeFileSync(file, content); } catch {}
-    try { fs.unlinkSync(tmp); } catch {}
-  }
-}
-const stateFile = uid => path.join(DATA, 'state-' + uid.replace(/[^a-zA-Z0-9_-]/g, '') + '.json');
-function readState(uid) {
-  try { return JSON.parse(fs.readFileSync(stateFile(uid), 'utf8')); } catch { return null; }
-}
 
 /* ---------- push notifications (Web Push / VAPID) ---------- */
 const vapidFile = path.join(DATA, 'vapid.json');
@@ -453,10 +441,7 @@ const routes = {
   'GET /api/data': async (req, res) => {
     const user = readSession(req);
     if (!user) return json(res, 401, { error: 'not signed in' });
-    try {
-      const state = JSON.parse(fs.readFileSync(stateFile(user.id), 'utf8'));
-      json(res, 200, { state });
-    } catch { json(res, 200, { state: null }); }
+    json(res, 200, { state: readState(user.id) });
   },
 
   'PUT /api/data': async (req, res) => {
@@ -465,7 +450,7 @@ const routes = {
     const body = await readBody(req);
     if (!body.state || typeof body.state !== 'object') return json(res, 400, { error: 'state required' });
     delete body.state.active;
-    atomicWrite(stateFile(user.id), JSON.stringify(body.state));
+    writeState(user.id, body.state);
     user.lastActiveAt = Date.now();
     saveDb();
     json(res, 200, { ok: true, ts: body.state._ts || null });

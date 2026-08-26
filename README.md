@@ -127,18 +127,20 @@ mobile app is the install-and-done flavor.
                                                         ▼
                                         ┌──────────────────────────┐
                                         │  api  (Node + WebAuthn)  │
-                                        │   └─ ./data (JSON files) │
+                                        │   └─ ./data (SQLite)     │
                                         └──────────────────────────┘
 ```
 
 - **frontend/** — React + Vite (React Router + Zustand), built to static files **inside Docker**
-- **api/** — Node with no framework, one dependency (`@simplewebauthn/server`), storing everything as plain JSON files under `./data`
+- **api/** — Node with no framework, storing everything in **SQLite** (`./data/app.db`, better-sqlite3)
 - **web/** — a multi-stage image that builds the frontend and serves it with nginx, proxying `/api` to the backend so it's all on **one origin** (passkeys require this)
 
 ## Your data
 
-Lives in `./data` on your host: `db.json` (profiles + public passkeys), `state-<user>.json`
-(each user's plan, workouts, body weight, settings), and `secret` (the session-cookie key).
+Lives in `./data` on your host: `app.db` (SQLite — users, invites, push subscriptions and each
+user's plan/workouts/body weight/settings), plus `secret` and `vapid.json` (session & push keys,
+generated on first run). Legacy `db.json` / `state-*.json` files are imported into SQLite
+automatically on first boot and kept as `*.legacy` backups.
 **Back up `./data` and you've backed up everything.** Passkey private keys never touch the
 server — they stay in your phone's secure hardware / your password manager.
 
