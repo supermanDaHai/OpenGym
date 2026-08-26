@@ -1,5 +1,6 @@
 import { EXDB } from './exercises-data.js'
-import { t } from './i18n.js'
+import { t, getLang } from './i18n.js'
+import { EXNAME_ZH } from './exnames-zh.js'
 
 export { EXDB }
 export const EXIDX = {}
@@ -50,3 +51,13 @@ export const isBodyweightEq = idOrEx =>
 // down on the first `ex.n`.
 export const exOr = id => EXIDX[id] ||
   { id, n: t('Unknown exercise'), bp: '', tg: '', eq: '', sm: [], st: [], missing: true }
+
+// Display name for an exercise (object or id). In Chinese UI the built-in catalogue
+// shows the translated name; custom exercises and other languages keep the original.
+export const exName = exOrId => {
+  if (!exOrId) return ''
+  const ex = typeof exOrId === 'string' ? EXIDX[exOrId] : exOrId
+  if (!ex) return typeof exOrId === 'string' ? exOrId : (exOrId.n || '')
+  if (getLang() === 'zh') return EXNAME_ZH[ex.id] || ex.n
+  return ex.n
+}

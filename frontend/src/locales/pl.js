@@ -554,4 +554,10 @@ export default {
   '{0} sets of {1} — time to add weight or move to a harder variation.': '{0} × {1} powt. — czas dodać ciężar albo przejść na trudniejszy wariant.',
   '{0} per side': '{0} na stronę',
   'You still log the total: {0} is {1} per side.': 'Nadal zapisujesz łączną liczbę: {0} to {1} na stronę.',
+  "Sign in with account": "Sign in with account",
+  "Register account": "Register account",
+  "Needs an invite code from the admin.": "Needs an invite code from the admin.",
+  "Signed in with account": "Signed in with account",
+  "E-mail sign-in, sync across your devices, your own data.": "E-mail sign-in, sync across your devices, your own data.",
+  "Signs this profile out on every device, including this one. Sign in again with your e-mail anytime.": "Signs this profile out on every device, including this one. Sign in again with your e-mail anytime.",
 }

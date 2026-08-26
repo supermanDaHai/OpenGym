@@ -554,4 +554,10 @@ export default {
   '{0} sets of {1} — time to add weight or move to a harder variation.': '{1} रेप्स के {0} सेट — अब वज़न बढ़ाने या किसी कठिन वैरिएशन पर जाने का समय।',
   '{0} per side': 'प्रति तरफ़ {0}',
   'You still log the total: {0} is {1} per side.': 'आप कुल ही दर्ज करते हैं: {0} यानी प्रति तरफ़ {1}।',
+  "Sign in with account": "Sign in with account",
+  "Register account": "Register account",
+  "Needs an invite code from the admin.": "Needs an invite code from the admin.",
+  "Signed in with account": "Signed in with account",
+  "E-mail sign-in, sync across your devices, your own data.": "E-mail sign-in, sync across your devices, your own data.",
+  "Signs this profile out on every device, including this one. Sign in again with your e-mail anytime.": "Signs this profile out on every device, including this one. Sign in again with your e-mail anytime.",
 }

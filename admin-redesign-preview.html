@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>openGym 管理后台 · 重设计方案预览</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --surface:#ffffff; --surface-2:#f8fafc;
+    --border:#e8ebf1; --border-strong:#dbe0e8;
+    --text:#0f172a; --text-2:#475569; --text-3:#94a3b8;
+    --acc:#10b981; --acc-ink:#047857; --acc-soft:#e7f8f1;
+    --indigo:#6366f1; --amber:#f59e0b; --sky:#0ea5e9; --rose:#f43f5e;
+    --danger:#ef4444; --danger-soft:#fdecec; --danger-ink:#b91c1c;
+    --shadow:0 1px 2px rgba(16,24,40,.04),0 1px 3px rgba(16,24,40,.06);
+    --shadow-md:0 6px 20px -6px rgba(16,24,40,.12);
+    --shadow-lg:0 24px 60px -12px rgba(16,24,40,.22);
+    --r:14px; --r-lg:18px;
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:var(--font);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-size:14px;line-height:1.5}
+  .num{font-variant-numeric:tabular-nums}
+
+  /* ---------- 布局骨架 ---------- */
+  .app{display:flex;min-height:100vh}
+  .side{width:248px;flex:none;background:var(--surface);border-right:1px solid var(--border);
+    display:flex;flex-direction:column;padding:20px 14px;position:sticky;top:0;height:100vh}
+  .brand{display:flex;align-items:center;gap:11px;padding:6px 10px 18px}
+  .brand-ic{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,#10b981,#0ea5e9);
+    display:flex;align-items:center;justify-content:center;color:#fff;font-size:19px;flex:none;box-shadow:0 4px 12px -2px rgba(16,185,129,.4)}
+  .brand b{font-size:15px;letter-spacing:.2px;display:block}
+  .brand small{color:var(--text-3);font-size:11.5px}
+  .nav{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+  .nav button{display:flex;align-items:center;gap:11px;width:100%;padding:11px 12px;border:none;border-radius:10px;
+    background:transparent;color:var(--text-2);font-size:14px;cursor:pointer;text-align:left;font-family:inherit;transition:.15s}
+  .nav button .ic{font-size:17px;width:18px;text-align:center;opacity:.8}
+  .nav button:hover{background:var(--surface-2);color:var(--text)}
+  .nav button.on{background:var(--acc-soft);color:var(--acc-ink);font-weight:600}
+  .nav button.on .ic{opacity:1}
+  .nav button .badge{margin-left:auto;background:#eef2ff;color:#4f46e5;font-size:11px;border-radius:99px;padding:1px 9px;font-weight:600}
+  .side-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding-top:14px}
+  .who{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);
+    color:var(--text-2);font-size:12.5px;border-radius:99px;padding:6px 12px}
+  .who .dot{width:7px;height:7px;border-radius:50%;background:var(--acc)}
+  .foot-btns{display:flex;gap:8px}
+  .foot-btns button{flex:1;border-radius:10px;font-size:12.5px;padding:9px 0;cursor:pointer;font-family:inherit;
+    display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border);background:var(--surface);color:var(--text-2)}
+  .foot-btns .out{border-color:#f6d4d4;color:var(--danger-ink);background:var(--danger-soft)}
+  .foot-btns button:hover{filter:brightness(.98)}
+
+  .main{flex:1;min-width:0;overflow-y:auto;padding:28px 32px 56px}
+  .wrap{max-width:1320px;margin:0 auto}
+  .topbar{display:flex;align-items:center;gap:14px;margin-bottom:24px;flex-wrap:wrap}
+  .topbar h1{font-size:23px;font-weight:700;letter-spacing:-.02em}
+  .topbar .sub{color:var(--text-3);font-size:13px;margin-top:2px}
+  .topbar .spacer{flex:1}
+  .clock{display:inline-flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);
+    border-radius:10px;padding:8px 13px;color:var(--text-2);font-size:12.5px}
+  .clock .dot{width:7px;height:7px;border-radius:50%;background:var(--acc)}
+  .btn{font-family:inherit;border:none;border-radius:10px;cursor:pointer;font-size:13.5px;font-weight:600;
+    padding:9px 15px;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+  .btn:active{transform:translateY(1px)}
+  .btn-primary{background:var(--acc);color:#fff;box-shadow:0 4px 12px -3px rgba(16,185,129,.45)}
+  .btn-primary:hover{background:#0da271}
+  .btn-ghost{background:var(--surface);border:1px solid var(--border);color:var(--text-2)}
+  .btn-ghost:hover{background:var(--surface-2)}
+  .btn-danger{background:var(--danger);color:#fff}
+  .btn-danger:hover{background:#dc2626}
+  .btn-sm{padding:7px 12px;font-size:12.5px}
+
+  /* ---------- KPI ---------- */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-bottom:18px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:18px 20px;
+    position:relative;overflow:hidden;box-shadow:var(--shadow)}
+  .kpi .ic{position:absolute;right:16px;top:16px;width:34px;height:34px;border-radius:10px;display:flex;
+    align-items:center;justify-content:center;font-size:17px}
+  .kpi .l{font-size:12.5px;color:var(--text-3);font-weight:500}
+  .kpi .v{font-size:32px;font-weight:750;letter-spacing:-.02em;margin-top:6px;line-height:1.05}
+  .kpi .s{font-size:12px;color:var(--text-3);margin-top:4px}
+  .kpi .delta{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;margin-top:8px;
+    padding:2px 8px;border-radius:99px}
+  .delta.up{background:var(--acc-soft);color:var(--acc-ink)}
+  .delta.flat{background:var(--surface-2);color:var(--text-3)}
+
+  /* ---------- live banner ---------- */
+  .live{display:flex;align-items:center;gap:10px;background:var(--acc-soft);border:1px solid #c7eedd;
+    color:var(--acc-ink);font-size:13px;border-radius:var(--r);padding:11px 16px;margin-bottom:18px}
+  .live .pulse{width:9px;height:9px;border-radius:50%;background:var(--acc);box-shadow:0 0 0 0 rgba(16,185,129,.5);
+    animation:pulse 1.6s infinite}
+  @keyframes pulse{70%{box-shadow:0 0 0 8px rgba(16,185,129,0)}100%{box-shadow:0 0 0 0 rgba(16,185,129,0)}}
+
+  /* ---------- 图表网格 ---------- */
+  .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px 22px;
+    box-shadow:var(--shadow);min-width:0}
+  .card-h{display:flex;align-items:baseline;gap:10px;margin-bottom:14px}
+  .card-h .t{font-size:14.5px;font-weight:600}
+  .card-h .st{font-size:12px;color:var(--text-3);margin-left:auto}
+  .card-h .tag{font-size:11px;color:var(--text-3);background:var(--surface-2);border:1px solid var(--border);
+    padding:2px 9px;border-radius:99px}
+  .hbars{display:flex;flex-direction:column;gap:9px;margin-top:2px}
+  .hbar{display:flex;align-items:center;gap:10px;font-size:12.5px}
+  .hbar .n{flex:0 0 104px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+  .hbar .track{flex:1;height:8px;background:var(--surface-2);border-radius:99px;overflow:hidden}
+  .hbar .fill{display:block;height:100%;border-radius:99px}
+  .hbar .val{flex:0 0 34px;text-align:right;color:var(--text-2);font-weight:600}
+
+  /* ---------- 表格 ---------- */
+  .toolbar{display:flex;align-items:center;gap:14px;margin-bottom:16px;flex-wrap:wrap}
+  .search{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:9px 13px;
+    color:var(--text-2);font-size:13.5px;outline:none;min-width:240px;font-family:inherit}
+  .search:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
+  .tool-stat{color:var(--text-3);font-size:12.5px}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden}
+  table{width:100%;border-collapse:collapse}
+  thead th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3);font-weight:600;
+    text-align:left;padding:13px 18px;border-bottom:1px solid var(--border);background:var(--surface-2)}
+  tbody td{padding:13px 18px;border-bottom:1px solid var(--border);font-size:13.5px;vertical-align:middle}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr{cursor:pointer;transition:background .12s}
+  tbody tr:hover{background:var(--surface-2)}
+  tbody tr.off{opacity:.5}
+  .u-name{display:flex;align-items:center;gap:10px}
+  .avatar{width:34px;height:34px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+    color:#fff;font-size:13px;font-weight:600}
+  .u-name b{font-size:13.5px}
+  .u-name small{display:block;color:var(--text-3);font-size:11.5px}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;border-radius:99px;padding:3px 10px}
+  .pill.acc{background:var(--acc-soft);color:var(--acc-ink)}
+  .pill.bad{background:var(--danger-soft);color:var(--danger-ink)}
+  .pill.mut{background:var(--surface-2);color:var(--text-3)}
+  .code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--indigo);font-weight:600}
+  .mini{font-family:inherit;border:1px solid var(--border);background:var(--surface);border-radius:8px;font-size:12px;
+    padding:5px 11px;cursor:pointer;color:var(--text-2);transition:.15s}
+  .mini:hover{background:var(--surface-2)}
+  .mini.ok{border-color:#bfe9d4;color:var(--acc-ink);background:var(--acc-soft)}
+  .mini.danger{border-color:#f6d4d4;color:var(--danger-ink);background:var(--danger-soft)}
+  .ops{display:flex;gap:6px;justify-content:flex-end}
+  .empty{padding:40px;text-align:center;color:var(--text-3);font-size:13px}
+
+  /* ---------- 邀请码列表 ---------- */
+  .inv{display:flex;flex-direction:column;gap:12px}
+  .inv-row{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:13px 16px}
+  .inv-head{display:flex;align-items:center;gap:11px;flex-wrap:wrap}
+  .inv-code{font-family:ui-monospace,Menlo,monospace;font-size:15px;font-weight:700;letter-spacing:.06em;color:var(--indigo);cursor:pointer}
+  .inv-meta{font-size:11.5px;color:var(--text-3)}
+  .inv-users{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+  .chip{display:inline-flex;align-items:center;gap:6px;background:var(--acc-soft);border:1px solid #c7eedd;
+    color:var(--acc-ink);font-size:11px;border-radius:99px;padding:3px 11px}
+  .chip em{font-style:normal;opacity:.7}
+  .revoked{font-size:11.5px;color:var(--text-3);margin-top:8px}
+
+  /* ---------- 弹窗：居中 ---------- */
+  .backdrop{position:fixed;inset:0;background:rgba(15,23,42,.46);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);
+    z-index:100;display:flex;align-items:center;justify-content:center;padding:24px;animation:fade .2s ease}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .dialog{background:var(--surface);border-radius:18px;box-shadow:var(--shadow-lg);width:min(92vw,560px);
+    max-height:88vh;display:flex;flex-direction:column;animation:pop .26s cubic-bezier(.2,.8,.3,1);overflow:hidden}
+  @keyframes pop{from{transform:scale(.95) translateY(8px);opacity:0}to{transform:none;opacity:1}}
+  .dialog.sm{width:min(92vw,440px)}
+  .d-head{display:flex;align-items:center;gap:12px;padding:20px 24px 16px;border-bottom:1px solid var(--border)}
+  .d-head .dt{font-size:17px;font-weight:700;letter-spacing:-.01em}
+  .d-head .ds{font-size:12.5px;color:var(--text-3);margin-top:2px}
+  .d-close{margin-left:auto;width:32px;height:32px;border-radius:9px;border:1px solid var(--border);background:var(--surface);
+    color:var(--text-3);cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;flex:none}
+  .d-close:hover{background:var(--surface-2);color:var(--text)}
+  .d-body{padding:20px 24px;overflow-y:auto}
+  .d-foot{display:flex;justify-content:flex-end;gap:10px;padding:16px 24px;border-top:1px solid var(--border);background:var(--surface-2)}
+  .field{width:100%;border:1px solid var(--border);border-radius:10px;padding:11px 13px;font-size:13.5px;font-family:inherit;
+    color:var(--text);outline:none;background:var(--surface);transition:.15s}
+  .field:focus{border-color:var(--acc);box-shadow:0 0 0 3px var(--acc-soft)}
+  .field + .field{margin-top:12px}
+  .hint{font-size:12px;color:var(--text-3);margin-top:10px;line-height:1.5}
+  .profile{display:flex;align-items:center;gap:14px;margin-bottom:16px}
+  .profile .avatar{width:52px;height:52px;font-size:19px;border-radius:14px}
+  .profile b{font-size:18px}
+  .profile .email{color:var(--text-3);font-size:13px}
+  .tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:4px 0 18px}
+  .tile{background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:13px 12px;text-align:center}
+  .tile .l{font-size:11.5px;color:var(--text-3)}
+  .tile .v{font-size:21px;font-weight:700;margin-top:4px;letter-spacing:-.02em}
+  .sec-t{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;margin:6px 0 10px}
+  .hist{display:flex;flex-direction:column}
+  .hist .row{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--border)}
+  .hist .row:last-child{border-bottom:none}
+  .hist .nm{font-weight:600;font-size:13.5px}
+  .hist .mt{font-size:11.5px;color:var(--text-3)}
+  .hist .vol{margin-left:auto;font-weight:600;color:var(--text-2)}
+  .confirm-ic{width:46px;height:46px;border-radius:50%;background:var(--danger-soft);color:var(--danger);
+    display:flex;align-items:center;justify-content:center;font-size:22px;margin:6px auto 14px}
+
+  /* ---------- 弹窗：底部抽屉（旧方案，用于对比） ---------- */
+  .sheet-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:100;display:flex;align-items:flex-end;
+    justify-content:center;animation:fade .2s ease}
+  .sheet{background:var(--surface);width:100%;max-width:560px;border-radius:20px 20px 0 0;max-height:90vh;
+    overflow-y:auto;animation:sheetup .3s cubic-bezier(.2,.8,.3,1);padding:8px 22px 28px}
+  @keyframes sheetup{from{transform:translateY(100%)}to{transform:none}}
+  .sheet .grab{width:38px;height:5px;border-radius:99px;background:var(--border-strong);margin:8px auto 14px}
+  .sheet h3{font-size:19px;font-weight:700;margin-bottom:4px}
+
+  /* ---------- 设计说明 ---------- */
+  .notes{margin-top:40px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+    padding:24px 26px;box-shadow:var(--shadow)}
+  .notes h3{font-size:16px;margin-bottom:6px}
+  .notes p{color:var(--text-2);font-size:13.5px;line-height:1.7;margin:10px 0}
+  .notes ul{margin:8px 0 0 18px;color:var(--text-2);font-size:13.5px;line-height:1.7}
+  .notes .k{color:var(--acc-ink);font-weight:600}
+  .ctl{position:fixed;right:20px;bottom:20px;z-index:90;background:var(--surface);border:1px solid var(--border);
+    border-radius:14px;box-shadow:var(--shadow-md);padding:12px 14px;display:flex;flex-direction:column;gap:8px;width:230px}
+  .ctl .t{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.04em}
+  .seg{display:flex;background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:3px;gap:3px}
+  .seg button{flex:1;border:none;background:transparent;font-family:inherit;font-size:12.5px;font-weight:600;
+    color:var(--text-3);border-radius:7px;padding:7px 4px;cursor:pointer}
+  .seg button.on{background:var(--surface);color:var(--acc-ink);box-shadow:var(--shadow)}
+  .ctl .d{font-size:11.5px;color:var(--text-3);line-height:1.5}
+  @media (max-width:1100px){.kpis{grid-template-columns:repeat(2,1fr)}.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- 侧边栏 -->
+  <aside class="side">
+    <div class="brand">
+      <span class="brand-ic">⬆</span>
+      <div><b>openGym 后台</b><small>管理控制台</small></div>
+    </div>
+    <nav class="nav">
+      <button class="on" data-view="dash"><span class="ic">▦</span>数据面板</button>
+      <button data-view="users"><span class="ic">◍</span>用户管理<span class="badge">128</span></button>
+      <button data-view="invites"><span class="ic">⚷</span>邀请码管理<span class="badge">6</span></button>
+    </nav>
+    <div class="side-foot">
+      <span class="who"><span class="dot"></span>闫咏梅 · 超级管理员</span>
+      <div class="foot-btns">
+        <button>⌂ 返回主站</button>
+        <button class="out">⏻ 退出</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- 主内容 -->
+  <main class="main">
+    <div class="wrap">
+      <div class="topbar">
+        <div>
+          <h1 id="pageTitle">数据面板</h1>
+          <div class="sub" id="pageSub">实例运行总览 · 实时数据每 30 秒刷新</div>
+        </div>
+        <span class="spacer"></span>
+        <span class="clock"><span class="dot"></span><span id="clock" class="num">--:--:--</span></span>
+        <button class="btn btn-ghost btn-sm" onclick="reload()">↻ 刷新</button>
+      </div>
+
+      <!-- 数据面板 -->
+      <section id="view-dash">
+        <div class="kpis">
+          <div class="kpi"><span class="ic" style="background:#eef2ff;color:#4f46e5">◍</span>
+            <div class="l">注册用户</div><div class="v num">128</div>
+            <div class="s">累计注册人数</div><span class="delta up">▲ 12 本周</span></div>
+          <div class="kpi"><span class="ic" style="background:#e7f8f1;color:#047857">◉</span>
+            <div class="l">今日活跃</div><div class="v num">34</div>
+            <div class="s">今天有操作的用户</div><span class="delta up">▲ 8%</span></div>
+          <div class="kpi"><span class="ic" style="background:#fef3c7;color:#b45309">✸</span>
+            <div class="l">30 天活跃</div><div class="v num">96</div>
+            <div class="s">近 30 天</div><span class="delta up">▲ 21%</span></div>
+          <div class="kpi"><span class="ic" style="background:#e0f2fe;color:#0369a1">⚡</span>
+            <div class="l">累计训练</div><div class="v num">8,412</div>
+            <div class="s">今日 142 次</div><span class="delta up">▲ 5%</span></div>
+        </div>
+
+        <div class="live"><span class="pulse"></span><b>正在训练：</b>张伟（深蹲 3/5 组）· 李娜（卧推 2/4 组）· 王芳（硬拉 4/4 组）</div>
+
+        <div class="grid2">
+          <div class="card"><div class="card-h"><span class="t">注册趋势</span><span class="st">近 30 天新增用户</span></div><div id="c-reg"></div></div>
+          <div class="card"><div class="card-h"><span class="t">每日训练量</span><span class="st">近 30 天训练次数</span></div><div id="c-work"></div></div>
+          <div class="card"><div class="card-h"><span class="t">活跃趋势</span><span class="st">近 30 天每日活跃用户</span></div><div id="c-act"></div></div>
+          <div class="card"><div class="card-h"><span class="t">高频动作 TOP10</span><span class="st">全部用户训练记录</span></div><div class="hbars" id="c-top"></div></div>
+        </div>
+      </section>
+
+      <!-- 用户管理 -->
+      <section id="view-users" style="display:none">
+        <div class="toolbar">
+          <input class="search" placeholder="搜索昵称 / 邮箱…" />
+          <span class="tool-stat">128 / 128 个用户</span>
+          <span class="spacer" style="flex:1"></span>
+          <button class="btn btn-primary btn-sm" onclick="openInvite()">＋ 创建邀请码</button>
+        </div>
+        <div class="panel">
+          <table>
+            <thead><tr>
+              <th>用户</th><th>邀请码</th><th>注册时间</th><th>最后活跃</th><th>训练</th><th>体重</th><th>状态</th><th style="text-align:right">操作</th>
+            </tr></thead>
+            <tbody id="userRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- 邀请码管理 -->
+      <section id="view-invites" style="display:none">
+        <div class="toolbar">
+          <span class="tool-stat">6 个可用 · 共 47 人受邀注册</span>
+          <span class="spacer" style="flex:1"></span>
+          <button class="btn btn-primary btn-sm" onclick="openInvite()">＋ 创建邀请码</button>
+        </div>
+        <div class="panel" style="padding:18px 20px"><div class="inv" id="invRows"></div></div>
+      </section>
+
+      <!-- 设计说明 -->
+      <div class="notes">
+        <h3>设计说明（为什么这样改）</h3>
+        <p><span class="k">1. 配色从「深色霓虹」改为「浅色明亮」。</span> 原后台是 <code>#070b14</code> 深黑底 + 青绿荧光，长时间盯数据容易疲劳、也显"廉价"。新方案用近白画布 <code>#f4f6f9</code> + 纯白卡片 + 发丝级边框 + 极淡阴影，信息像"纸面报表"一样清晰，主色用契合健身的祖母绿 <code>#10b981</code> 做点缀而非铺满。</p>
+        <p><span class="k">2. 看板不再"挤在一块"。</span> 原 KPI 用 <code>minmax(150px,1fr)</code> 一行硬塞 7 个、图表 <code>minmax(300px,1fr)</code> 几乎贴边、padding 仅 14px。新版：KPI 固定 4 列、图表 2×2 大卡、间距统一 18px、内容限宽 1320px 居中——呼吸感来自留白，不是装饰。</p>
+        <p><span class="k">3. 弹窗从「底部抽屉」改为「居中弹窗」。</span> 原后台所有弹层都复用 App 的移动端 <code>openSheet</code>，默认从屏幕底部滑出（为手机单手操作设计）。但这是一个 <b>Web 管理后台</b>：桌面端居中弹窗视线更自然、信息密度更高、不遮挡整屏上下文。右下角开关可实时切换两种风格对比。</p>
+        <ul>
+          <li><b>用户详情 / 创建邀请码</b> → 改为居中对话框（带标题栏、关闭按钮、底部操作区）。</li>
+          <li><b>禁用账号 / 吊销邀请码</b> 这类危险操作 → 居中确认框，红色强调。</li>
+          <li>移除了原有的移动端响应式 hack（侧栏变顶栏、表格列折叠），因为未来只做 Web 后台。</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- 弹窗容器 -->
+<div id="modalRoot"></div>
+
+<!-- 设计风格切换器 -->
+<div class="ctl">
+  <div class="t">弹窗风格对比</div>
+  <div class="seg" id="popSeg">
+    <button class="on" data-pop="center">居中弹窗</button>
+    <button data-pop="sheet">底部抽屉</button>
+  </div>
+  <div class="d" id="popDesc">Web 后台推荐：居中弹窗，视线自然、不挡上下文。</div>
+</div>
+
+<script>
+/* ---------- mock 数据 ---------- */
+const users = [
+  {name:'张伟',email:'zhangwei@example.com',code:'FIT2024',reg:'2026-05-12',active:'2 分钟前',w:142,wt:38,role:'user',live:'深蹲 3/5 组'},
+  {name:'李娜',email:'lina@example.com',code:'GYM99',reg:'2026-04-03',active:'8 分钟前',w:98,wt:21,role:'user',live:'卧推 2/4 组'},
+  {name:'王芳',email:'wangfang@example.com',code:'SPRING',reg:'2026-06-21',active:'15 分钟前',w:76,wt:15,role:'user',live:'硬拉 4/4 组'},
+  {name:'闫咏梅',email:'yan@example.com',code:'—',reg:'2026-01-01',active:'1 小时前',w:310,wt:120,role:'admin'},
+  {name:'陈强',email:'chenqiang@example.com',code:'FIT2024',reg:'2026-07-08',active:'3 小时前',w:54,wt:9,role:'user',disabled:true},
+  {name:'刘洋',email:'liuyang@example.com',code:'GYM99',reg:'2026-03-15',active:'昨天',w:201,wt:44,role:'user'},
+]
+const invites = [
+  {code:'FIT2024',note:'健身群推广',used:23,max:null,users:['张伟','陈强','刘洋']},
+  {code:'GYM99',note:'线下门店',used:14,max:50,users:['李娜','王芳']},
+  {code:'SPRING',note:'春季活动',used:10,max:30,users:['王芳']},
+  {code:'VIP88',note:'会员专享',used:0,max:20,users:[]},
+]
+
+/* ---------- 图表（SVG） ---------- */
+function lineSVG(data,color){
+  const W=600,H=180,PL=34,PR=12,PT=14,PB=24, iw=W-PL-PR, ih=H-PT-PB;
+  const max=Math.max(1,...data); const step=iw/(data.length-1);
+  const pts=data.map((n,i)=>[PL+i*step, PT+ih-(n/max)*ih]);
+  const line=pts.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ');
+  const area=`${PL},${PT+ih} ${line} ${PL+iw},${PT+ih}`;
+  let g='';
+  for(let i=0;i<data.length;i+=6){const x=PL+i*step; g+=`<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT+ih}" stroke="#eef1f6"/>`}
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+    <defs><linearGradient id="g${color.slice(1)}" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${color}" stop-opacity=".18"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+    ${g}
+    <polygon points="${area}" fill="url(#g${color.slice(1)})"/>
+    <polyline points="${line}" fill="none" stroke="${color}" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+    ${pts.map((p,i)=>`<circle cx="${p[0]}" cy="${p[1]}" r="2.6" fill="${color}"/>`).join('')}
+  </svg>`;
+}
+function barSVG(data,color){
+  const W=600,H=180,PL=34,PR=12,PT=14,PB=24, iw=W-PL-PR, ih=H-PT-PB, bw=iw/data.length;
+  const max=Math.max(1,...data);
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block">
+    ${data.map((n,i)=>{const h=(n/max)*ih;const x=PL+i*bw;const y=PT+ih-h;
+      return `<rect x="${x+bw*0.24}" y="${y}" width="${bw*0.52}" height="${Math.max(2,h)}" rx="3" fill="${color}" fill-opacity=".85"/>`}).join('')}
+  </svg>`;
+}
+const regTrend=[2,3,1,4,3,5,6,4,3,5,7,6,8,5,4,6,9,7,6,8,7,9,10,8,7,9,11,8,10,12];
+const workTrend=[3,5,4,6,8,7,9,6,5,8,10,9,11,8,7,9,12,10,9,11,13,10,12,14,11,13,15,12,14,16];
+const actTrend=[40,42,45,48,52,55,58,60,57,62,65,68,72,70,66,74,78,80,76,82,85,88,90,86,84,89,93,91,95,96];
+const topEx=[['深蹲',142],['硬拉',128],['卧推',119],['引体向上',98],['肩推',87],['弯举',76],['高位下拉',65],['箭步蹲',54],['划船',47],['卷腹',39]];
+
+document.getElementById('c-reg').innerHTML=lineSVG(regTrend,'#6366f1');
+document.getElementById('c-work').innerHTML=barSVG(workTrend,'#10b981');
+document.getElementById('c-act').innerHTML=lineSVG(actTrend,'#f59e0b');
+document.getElementById('c-top').innerHTML=topEx.map(([n,c])=>{
+  const max=topEx[0][1]; const pct=(c/max*100).toFixed(1);
+  return `<div class="hbar"><span class="n">${n}</span><span class="track"><span class="fill" style="width:${pct}%;background:#0ea5e9"></span></span><span class="val num">${c}</span></div>`;
+}).join('');
+
+/* ---------- 用户表格 ---------- */
+const palette=['#6366f1','#10b981','#f59e0b','#0ea5e9','#f43f5e','#8b5cf6'];
+function avatar(name,i){return `<span class="avatar" style="background:${palette[i%palette.length]}">${name[0]}</span>`}
+function renderUsers(){
+  document.getElementById('userRows').innerHTML=users.map((u,i)=>`
+    <tr onclick="openUser(${i})">
+      <td><div class="u-name">${avatar(u.name,i)}<div><b>${u.name}</b>${u.role==='admin'?'<span class="pill acc" style="margin-left:6px">管理员</span>':''}${u.disabled?'<span class="pill bad" style="margin-left:6px">禁用</span>':''}<small>${u.email}</small></div></div></td>
+      <td><span class="code">${u.code}</span></td>
+      <td class="num" style="color:var(--text-3)">${u.reg}</td>
+      <td style="color:var(--text-3)">${u.active}</td>
+      <td class="num"><b>${u.w}</b></td>
+      <td class="num">${u.wt}</td>
+      <td>${u.role==='admin'?'<span class="pill acc">管理员</span>':u.disabled?'<span class="pill bad">已禁用</span>':'<span class="pill mut">正常</span>'}</td>
+      <td><div class="ops"><button class="mini" onclick="event.stopPropagation();openUser(${i})">详情</button>${u.role!=='admin'?`<button class="mini ${u.disabled?'ok':'danger'}" onclick="event.stopPropagation();confirmDisable(${i})">${u.disabled?'启用':'禁用'}</button>`:''}</div></td>
+    </tr>`).join('');
+}
+function renderInvites(){
+  document.getElementById('invRows').innerHTML=invites.map(inv=>`
+    <div class="inv-row"><div class="inv-head">
+      <span class="inv-code" onclick="copy('${inv.code}')">${inv.code}</span>
+      <span class="inv-meta">${inv.note} · ${inv.used}${inv.max?'/'+inv.max:''} 次使用</span>
+      <span style="flex:1"></span>
+      <button class="mini ok" onclick="copy('${inv.code}')">复制</button>
+      ${inv.used===0?`<button class="mini danger" onclick="revoke('${inv.code}')">吊销</button>`:''}
+    </div>${inv.users.length?`<div class="inv-users">${inv.users.map(n=>`<span class="chip">${n}</span>`).join('')}</div>`:''}</div>`).join('');
+}
+renderUsers();renderInvites();
+
+/* ---------- 视图切换 ---------- */
+const subs={dash:'实例运行总览 · 实时数据每 30 秒刷新',users:'管理注册用户 · 可查看详情与禁用账号',invites:'生成与管理邀请码 · 控制注册入口'};
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  const v=b.dataset.view;
+  ['dash','users','invites'].forEach(x=>document.getElementById('view-'+x).style.display=x===v?'block':'none');
+  document.getElementById('pageTitle').textContent=b.textContent.replace(/\d+$/,'').trim();
+  document.getElementById('pageSub').textContent=subs[v];
+});
+
+/* ---------- 弹窗系统 ---------- */
+let popStyle='center';
+const root=document.getElementById('modalRoot');
+function closeModal(){root.innerHTML=''}
+root.addEventListener('click',e=>{if(e.target.classList.contains('backdrop')||e.target.classList.contains('sheet-backdrop'))closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+function copy(c){navigator.clipboard&&navigator.clipboard.writeText(c);toast('已复制 '+c)}
+function toast(m){let t=document.getElementById('toast');if(!t){t=document.createElement('div');t.id='toast';
+  t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 18px;border-radius:10px;font-size:13px;z-index:200;box-shadow:0 10px 30px rgba(0,0,0,.3)';document.body.appendChild(t);}
+  t.textContent=m;t.style.opacity='1';clearTimeout(t._tm);t._tm=setTimeout(()=>t.style.opacity='0',1800)}
+
+function openUser(i){
+  const u=users[i];
+  const hist=[['腿部训练 A',(Math.random()*3600+1800)|0,142],['上肢训练 B',(Math.random()*3600+1800)|0,98],['核心训练',(Math.random()*3600+1800)|0,64]];
+  const body=`<div class="profile">${avatar(u.name,i)}<div><b>${u.name}</b><div class="email">${u.email}</div></div>
+    ${u.role==='admin'?'<span class="pill acc" style="margin-left:auto">管理员</span>':''}${u.disabled?'<span class="pill bad" style="margin-left:auto">已禁用</span>':''}</div>
+    <div class="tiles"><div class="tile"><div class="l">训练次数</div><div class="v num">${u.w}</div></div>
+      <div class="tile"><div class="l">体重记录</div><div class="v num">${u.wt}</div></div>
+      <div class="tile"><div class="l">训练计划</div><div class="v num">4</div></div>
+      <div class="tile"><div class="l">最后同步</div><div class="v num" style="font-size:15px">${u.active}</div></div></div>
+    <div class="sec-t">训练历史</div>
+    <div class="hist">${hist.map(h=>`<div class="row"><div><div class="nm">${h[0]}</div><div class="mt">今天 · ${Math.floor(h[1]/60)} 分 ${h[1]%60} 秒 · 5 组</div></div><span class="vol num">${h[2]} kg</span></div>`).join('')}</div>`;
+  const foot=`<button class="btn btn-ghost" onclick="closeModal()">关闭</button>${u.role!=='admin'?`<button class="btn ${u.disabled?'btn-primary':'btn-danger'}" onclick="closeModal();toast('${u.disabled?'已启用':'已禁用'} ${u.name}')">${u.disabled?'启用账号':'禁用账号'}</button>`:''}`;
+  showModal('用户详情', u.name+' 的档案与训练记录', body, foot);
+}
+function openInvite(){
+  const body=`<div class="hint" style="margin:0 0 12px">邀请码发给用户后，他们凭码 + 邮箱验证码即可注册。每个邀请码邀请到的人都会记录在后台。</div>
+    <input class="field" placeholder="自定义邀请码（留空自动生成，4-32 位字母数字）" style="letter-spacing:.1em;font-weight:600;text-transform:uppercase">
+    <input class="field" placeholder="备注（如：发给张三 / 健身群推广）">
+    <input class="field" placeholder="最多可用次数（留空 = 不限次数）" type="number" min="1">`;
+  const foot=`<button class="btn btn-ghost" onclick="closeModal()">取消</button><button class="btn btn-primary" onclick="closeModal();toast('邀请码已生成并复制')">生成邀请码</button>`;
+  showModal('创建邀请码', '生成一个新的注册邀请码', body, foot, 'sm');
+}
+function confirmDisable(i){
+  const u=users[i];
+  const body=`<div class="confirm-ic">!</div><p style="text-align:center;color:var(--text-2);margin:0 10px 4px">确定要${u.disabled?'启用':'禁用'} <b>${u.name}</b> 吗？</p>
+    <p style="text-align:center;color:var(--text-3);font-size:12.5px;margin:0">${u.disabled?'该账号将恢复登录与同步权限。':'该账号将被立即登出，无法再登录和同步，直到你重新启用。'}</p>`;
+  const foot=`<button class="btn btn-ghost" onclick="closeModal()">取消</button><button class="btn btn-danger" onclick="closeModal();toast('已${u.disabled?'启用':'禁用'} ${u.name}')">${u.disabled?'启用':'禁用'}</button>`;
+  showModal('', '', body, foot, 'sm', true);
+}
+function revoke(code){
+  const body=`<div class="confirm-ic">!</div><p style="text-align:center;color:var(--text-2);margin:0 10px 4px">吊销邀请码 <b>${code}</b>？</p>
+    <p style="text-align:center;color:var(--text-3);font-size:12.5px;margin:0">吊销后该码无法再注册新用户，但已邀请到的用户不受影响。</p>`;
+  const foot=`<button class="btn btn-ghost" onclick="closeModal()">取消</button><button class="btn btn-danger" onclick="closeModal();toast('已吊销 '+code)">吊销</button>`;
+  showModal('', '', body, foot, 'sm', true);
+}
+function showModal(title,sub,body,foot,size,centerOnly){
+  if(popStyle==='sheet' && !centerOnly){
+    root.innerHTML=`<div class="sheet-backdrop"><div class="sheet"><div class="grab"></div>
+      ${title?`<h3>${title}</h3><div class="hint">${sub}</div>`:''}${body}
+      <div style="display:flex;gap:10px;margin-top:18px">${foot.replace(/btn-ghost/g,'btn-ghost').replace(/style="margin-left:auto"/g,'')}</div></div></div>`;
+    return;
+  }
+  const head=title?`<div class="d-head"><div><div class="dt">${title}</div>${sub?`<div class="ds">${sub}</div>`:''}</div>
+    <button class="d-close" onclick="closeModal()">✕</button></div>`:'';
+  const f=foot?`<div class="d-foot">${foot}</div>`:'';
+  root.innerHTML=`<div class="backdrop"><div class="dialog ${size||''}">${head}<div class="d-body">${body}</div>${f}</div></div>`;
+}
+function reload(){const b=document.querySelector('.btn-ghost.btn-sm');if(b){b.textContent='↻ 刷新中…';setTimeout(()=>b.textContent='↻ 刷新',600)}toast('数据已刷新')}
+
+/* ---------- 时钟 ---------- */
+function tick(){const d=new Date();document.getElementById('clock').textContent=d.toLocaleTimeString('zh-CN',{hour12:false})}
+tick();setInterval(tick,1000);
+
+/* ---------- 风格切换 ---------- */
+document.getElementById('popSeg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  popStyle=b.dataset.pop;
+  document.querySelectorAll('#popSeg button').forEach(x=>x.classList.toggle('on',x===b));
+  document.getElementById('popDesc').textContent=popStyle==='center'
+    ? 'Web 后台推荐：居中弹窗，视线自然、不挡上下文。'
+    : '原移动端方案：从底部滑出，为手机单手操作设计，Web 端会遮挡上下文。';
+});
+</script>
+</body>
+</html>

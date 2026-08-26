@@ -23,7 +23,7 @@ import Stats from './views/Stats.jsx'
 import History from './views/History.jsx'
 import Library from './views/Library.jsx'
 import Settings from './views/Settings.jsx'
-import Admin from './views/Admin.jsx'
+import AdminGate from './views/AdminGate.jsx'
 
 bindUI(useUI)   // lets the shared controls open sheets without importing the store at module scope
 
@@ -43,8 +43,8 @@ function Shell() {
   const langV = useLang()   // re-renders the whole shell when the language (pack) changes
   useEffect(() => { setNav(navigate) }, [navigate])
   useEffect(() => { applyPrefs(S.theme, S.accent) }, [S.theme, S.accent])
-  useEffect(() => { setLang(S.lang || 'en') }, [S.lang])
-  useEffect(() => { document.documentElement.lang = S.lang || 'en' }, [langV, S.lang])
+  useEffect(() => { setLang(S.lang || 'zh') }, [S.lang])
+  useEffect(() => { document.documentElement.lang = S.lang || 'zh' }, [langV, S.lang])
   // every tab/route change starts at the top of the page
   useEffect(() => { window.scrollTo(0, 0) }, [loc.pathname])
   // bound to the workout, not to the route — checking Stats mid-session keeps the screen on
@@ -75,13 +75,14 @@ function Shell() {
               <Route path="/history" element={<History />} />
               <Route path="/library" element={<Library />} />
               <Route path="/settings" element={<Settings />} />
-              <Route path="/admin" element={user?.admin ? <Admin /> : <Navigate to="/home" replace />} />
+              <Route path="/admin" element={<AdminGate />} />
               <Route path="*" element={<Navigate to="/home" replace />} />
             </Routes>
           )}
         </ErrorBoundary>
       </div>
-      <TabBar onStart={startFlow} />
+      {/* 管理后台是独立的数据大屏，不套用普通页面的底部导航 */}
+      {loc.pathname.startsWith('/admin') ? null : <TabBar onStart={startFlow} />}
       <RestTimer />
       <Modals />
       <Toast />

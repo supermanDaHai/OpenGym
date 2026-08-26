@@ -4,7 +4,8 @@ import { useStore, DEF, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { ACCENTS, todayISO, localTZ } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
-import { api, webauthnOK, passkeyLogin, passkeyRegister, IS_ANDROID } from '../lib/api.js'
+import { IS_ANDROID } from '../lib/api.js'
+import { AuthCard } from './Login.jsx'
 import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
 import { t, LANGS, INSTR_LANGS } from '../lib/i18n.js'
@@ -12,7 +13,7 @@ import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder } from '../lib/mobile.js'
 import { loadStarterPlan, confirmSheet, importFromApp } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
-import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
+import { Section, Row, SelectRow, Switch, Segmented, Button } from '../components/ui.jsx'
 
 export default function Settings() {
   const nav = useNavigate()
@@ -48,17 +49,13 @@ export default function Settings() {
     }
     rd.readAsText(f)
   }
-  const signInHere = async () => {
-    try { const u = await passkeyLogin(); setUser(u); await pullState(); toast(t('Welcome back, {0}', u.name)) }
-    catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast(e.message || t('Sign-in failed')) }
-  }
-  const registerHere = () => useUI.getState().openSheet(close => <RegisterInline close={close} setUser={setUser} pushState={pushState} pullState={pullState} toast={toast} />)
+  const signInHere = () => useUI.getState().openSheet(close => <AuthCard onDone={close} />)
   // Ends the profile's sessions on every device — this one included, so on success it lands in
   // the same place as the plain sign-out above (home, local data cleared). On failure nothing
   // local is touched: still signed in here, and say so rather than leaving a half-signed-out app.
   const signOutEverywhere = () => confirmSheet({
     title: t('Sign out everywhere?'),
-    message: t('Signs this profile out on every device, including this one. Your passkeys keep working — sign in with them again anytime.'),
+    message: t('Signs this profile out on every device, including this one. Sign in again with your e-mail anytime.'),
     confirmText: t('Sign out everywhere'), danger: true,
     onConfirm: async () => {
       try { await signOutAll(); nav('/home'); toast(t('Signed out on all devices')) }
@@ -76,25 +73,23 @@ export default function Settings() {
     <Section title={MOBILE ? t('Your data') : DEMO ? t('Demo') : t('Account')}>
       {MOBILE ? <>
         <Row icon="lock" iconTint="var(--acc)" title={t('All data stays on this phone')} subtitle={t('No account, no cloud — back it up anytime with Export below.')} />
-        <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host openGym')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
+        <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host openGym')} subtitle={t('E-mail sign-in, sync across your devices, your own data.')} accessory="chevron"
           onClick={() => window.open(REPO, '_blank', 'noopener')} />
       </> : DEMO ? <>
         <Row icon="sparkles" iconTint="var(--acc)" title={t('You’re in the demo')} subtitle={t('Example data, stored only in this browser — change anything you like.')} />
         <Row icon="reset" iconTint="var(--blue)" title={t('Reset demo data')} accessory="chevron"
           onClick={() => confirmSheet({ title: t('Reset demo data?'), message: t('Puts the example plan, workouts and weigh-ins back the way they started.'), confirmText: t('Reset'), onConfirm: () => { resetDemo(); nav('/home'); toast(t('Demo data reset')) } })} />
-        <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host openGym')} subtitle={t('Passkey sign-in, sync across your devices, your own data.')} accessory="chevron"
+        <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host openGym')} subtitle={t('E-mail sign-in, sync across your devices, your own data.')} accessory="chevron"
           onClick={() => window.open(REPO, '_blank', 'noopener')} />
       </> : user ? <>
-        <Row icon="personCircle" iconTint="var(--grey)" title={user.name} subtitle={t('Signed in with passkey — data syncs to this profile.')} />
-        {user.admin && <Row icon="wrench" iconTint="var(--indigo)" title={t('Admin dashboard')} accessory="chevron" onClick={() => nav('/admin')} />}
+        <Row icon="personCircle" iconTint="var(--grey)" title={user.name} subtitle={user.email || t('Signed in with account')} />
+        {user.admin && <Row icon="wrench" iconTint="var(--indigo)" title={t('Admin dashboard')} subtitle="独立登录 · 数据看板 / 用户 / 邀请码" accessory="chevron" onClick={() => nav('/admin')} />}
         <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={() => confirmSheet({ title: t('Sign out?'), message: t('Your data is synced to your profile first, then cleared from this device.'), confirmText: t('Sign out'), danger: true, onConfirm: () => { signOut(); nav('/home') } })} />
         <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
-      </> : webauthnOK() ? <>
-        <Row icon="sparkles" iconTint="var(--acc)" title={t('Create passkey profile')} subtitle={t('Keeps your data safe and separate per person.')} accessory="chevron" onClick={registerHere} />
-        <Row icon="person" iconTint="var(--blue)" title={t('Sign in with passkey')} accessory="chevron" onClick={signInHere} />
-      </> : (
-        <Row icon="lock" iconTint="var(--grey)" title={t('Passkeys not supported in this browser.')} />
-      )}
+      </> : <>
+        <Row icon="sparkles" iconTint="var(--acc)" title={t('Register account')} subtitle={t('Needs an invite code from the admin.')} accessory="chevron" onClick={signInHere} />
+        <Row icon="person" iconTint="var(--blue)" title={t('Sign in with account')} accessory="chevron" onClick={signInHere} />
+      </>}
     </Section>
     {!user && !DEMO && !MOBILE && <p className="sect-f" style={{ marginTop: -18, marginBottom: 22 }}>{t('Guest mode — data lives only in this browser.')}</p>}
 
@@ -102,7 +97,7 @@ export default function Settings() {
     <Section title={t('General')} footer={t('Note: switching units only changes the label — logged numbers are not converted.')}>
       <SelectRow
         icon="globe" iconTint="var(--blue)" title={t('Language')}
-        value={S.lang || 'en'} onChange={v => update(s => { s.lang = v })}
+        value={S.lang || 'zh'} onChange={v => update(s => { s.lang = v })}
         options={Object.entries(LANGS).map(([k, name]) => ({
           value: k, label: name,
           subtitle: INSTR_LANGS.includes(k) ? null : t("Exercise instructions aren't available in this language yet — they stay in English."),
@@ -194,10 +189,10 @@ export default function Settings() {
         subtitle={t('to install openGym as a full-screen app.') + ' ' + (user ? t('Your data syncs with your profile — sign in anywhere to see it.') : t('Guest data stays on this device — export a backup now and then!'))} />
     </Section>}
 
-    <div className="dim small" style={{ textAlign: 'center', marginTop: 4, lineHeight: 1.6 }}>
-      openGym · {t('free & open source (AGPL v3)')}<br />
-      <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noopener">source code</a> · exercise data: hasaneyldrm/exercises-dataset (CC)
-    </div>
+    <Section title="支持开发者">
+      <Row icon="heart" iconTint="var(--pink)" title="支持开发者"
+        subtitle="扫码打赏 · 帮助维持服务器运维" accessory="chevron" onClick={supportSheet} />
+    </Section>
   </div>
 }
 
@@ -234,6 +229,27 @@ function effortHelpSheet() {
       <div>{t('The highlighted row is where most working sets land. Sets you have already logged keep their own scale, and nothing else reads the value — progression and estimated 1RM are unaffected.')}</div>
     </div>
     <div style={{ height: 8 }} />
+  </>)
+}
+
+function supportSheet() {
+  useUI.getState().openSheet(close => <>
+    <h3>支持 openGym</h3>
+    <div className="muted small" style={{ lineHeight: 1.6 }}>
+      openGym · 免费且开源（AGPL v3）<br />
+      <a href="https://github.com/DuarteSantos8/openGym" target="_blank" rel="noopener">source code</a>
+      {' · '}exercise data: hasaneyldrm/exercises-dataset (CC)
+    </div>
+    <div style={{ height: 14 }} />
+    <div className="dim small" style={{ lineHeight: 1.7 }}>
+      openGym 完全免费、无广告、无追踪。但自托管实例的服务器、备份、域名等都是持续的开销——为了让这个服务能稳定运行下去，如果你觉得好用，欢迎扫码支持一下。所有打赏都用于服务器维护成本，不会用于任何商业化。
+    </div>
+    <div style={{ height: 16 }} />
+    <img src="/donate-qr.jpg" alt="微信打赏二维码"
+      style={{ display: 'block', width: 216, height: 216, margin: '0 auto', borderRadius: 14,
+        boxShadow: '0 4px 16px rgba(0,0,0,.08)' }} />
+    <div className="dim small" style={{ textAlign: 'center', marginTop: 10 }}>微信扫码，感谢支持 ❤️</div>
+    <div style={{ height: 10 }} />
   </>)
 }
 
@@ -324,37 +340,5 @@ function PushCard({ S, update, toast }) {
       )}
     </Section>
     {on && <div style={{ marginTop: -12, marginBottom: 22 }}><Button size="sm" icon="bell" onClick={test}>{t('Send test notification')}</Button></div>}
-  </>
-}
-
-// The same registration as the sign-in screen's, reached from Settings instead. It asks for
-// the invite code on the same terms: an invite-only instance rejects a registration without
-// one, so a form that cannot collect it is a form that cannot succeed.
-function RegisterInline({ close, setUser, pushState, pullState, toast }) {
-  const nameRef = useRef(null)
-  const [code, setCode] = useState('')
-  const [inviteOnly, setInviteOnly] = useState(false)
-  useEffect(() => { api('/api/config').then(c => setInviteOnly(!!c.invite_only)).catch(() => {}) }, [])
-  const go = async () => {
-    const n = (nameRef.current.value || '').trim()
-    if (!n) { toast(t('Enter a name')); return }
-    if (inviteOnly && !code.trim()) { toast(t('An invite code is required')); return }
-    try {
-      const u = await passkeyRegister(n, code.trim()); setUser(u); close()
-      if (hasData(useStore.getState().S)) { await pushState(); toast(t('Profile created — data moved into it')) }
-      else { await pullState(); toast(t('Welcome, {0}', u.name)) }
-    } catch (e) { if (e.name !== 'NotAllowedError' && e.name !== 'AbortError') toast(e.message || t('Registration failed')) }
-  }
-  return <>
-    <h3>{t('Create your profile')}</h3>
-    <div className="muted small" style={{ marginBottom: 14 }}>{t('Pick a name, then confirm with your device.')}</div>
-    <TextField ref={nameRef} placeholder={t('Your name')} maxLength={40} />
-    {inviteOnly && <>
-      <div style={{ height: 10 }} />
-      <input className="input" placeholder={t('Invite code')} maxLength={40} value={code}
-        onChange={e => setCode(e.target.value.toUpperCase())} style={{ letterSpacing: '.14em', fontWeight: 600, textAlign: 'center' }} />
-      <div className="dim small" style={{ marginTop: 6 }}>{t('This app is invite-only — enter the code you were given.')}</div>
-    </>}
-    <div style={{ height: 12 }} /><Button variant="primary" onClick={go}>{t('Create passkey')}</Button>
   </>
 }

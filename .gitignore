@@ -1,0 +1,28 @@
+# ---- 密钥与配置（绝不入库） ----
+.env
+.env.local
+.env.*.local
+
+# ---- 运行时数据（服务器首启自动生成） ----
+# data/db.json 含真实用户邮箱；data/secret 是会话密钥；data/vapid.json 是推送密钥
+data/
+
+# ---- 依赖与构建产物 ----
+node_modules/
+**/node_modules/
+frontend/dist/
+api/node_modules/
+*.tsbuildinfo
+
+# ---- 工具目录与日志 ----
+.workbuddy/
+logs/
+*.log
+npm-debug.log*
+
+# ---- 操作系统与编辑器 ----
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

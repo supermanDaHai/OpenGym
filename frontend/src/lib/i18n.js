@@ -7,8 +7,8 @@ import { useSyncExternalStore } from 'react'
 
 // UI languages. de/pt have no instruction pack upstream — instructions fall back to English.
 export const LANGS = {
-  en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano',
-  pt: 'Português', pl: 'Polski', tr: 'Türkçe', ru: 'Русский', zh: '中文',
+  zh: '中文', en: 'English', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano',
+  pt: 'Português', pl: 'Polski', tr: 'Türkçe', ru: 'Русский',
   ko: '한국어', hi: 'हिन्दी'
 }
 export const INSTR_LANGS = ['en', 'es', 'fr', 'it', 'tr', 'ru', 'zh', 'hi', 'pl', 'ko']
@@ -20,7 +20,7 @@ const DATE_LOCALES = {
 const localePacks = import.meta.glob('../locales/*.js')
 const instrPacks = import.meta.glob('../instr/*.js')
 
-let lang = 'en'
+let lang = 'zh'
 let dict = {}
 let instr = null            // { exId: [steps] } for the current language, null = English
 let version = 0

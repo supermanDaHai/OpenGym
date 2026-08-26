@@ -21,7 +21,7 @@ services:
         fi
     restart: "no"
 
-  # Passkey auth + per-user data (Node, no framework).
+  # E-mail-code auth + per-user data (Node, no framework).
   # image: prebuilt (docker compose pull). build: from source (docker compose up --build).
   api:
     image: ghcr.io/duartesantos8/opengym-api:latest
@@ -31,8 +31,16 @@ services:
     environment:
       - PORT=3000            # internal port (nginx proxies here) — do not change
       - DATA_DIR=/data
+      # 账号系统与邮件（可在 .env 中覆盖；此处仅作默认值兜底）
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-}
+      - INVITE_ONLY=${INVITE_ONLY:-true}
+      - SMTP_HOST=${SMTP_HOST:-smtp.qq.com}
+      - SMTP_PORT=${SMTP_PORT:-465}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - SMTP_FROM=${SMTP_FROM:-}
     volumes:
-      - ./data:/data         # users, passkeys, per-user state, session secret — BACK THIS UP
+      - ./data:/data         # users, invites, per-user state, session secret — BACK THIS UP
 
   # Builds the React frontend (multi-stage) and serves it, proxying /api → api
   # and the exercise media from the shared volume. Single origin for passkeys.
@@ -40,7 +48,7 @@ services:
     image: ghcr.io/duartesantos8/opengym-web:latest
     build:
       context: .
-      dockerfile: web/Dockerfile
+      dockerfile: Dockerfile
     restart: unless-stopped
     depends_on:
       media:

@@ -554,4 +554,10 @@ export default {
   '{0} sets of {1} — time to add weight or move to a harder variation.': '{0} 组 × {1} 次——该加重量或换更难的变式了。',
   '{0} per side': '每侧 {0} 次',
   'You still log the total: {0} is {1} per side.': '你记录的仍然是总数：{0} 表示每侧 {1} 次。',
+  "Sign in with account": "登录账号",
+  "Register account": "注册账号",
+  "Needs an invite code from the admin.": "需要管理员发放的邀请码才能注册。",
+  "Signed in with account": "已通过邮箱登录，数据已同步到云端",
+  "E-mail sign-in, sync across your devices, your own data.": "邮箱登录，多设备同步，数据完全归你。",
+  "Signs this profile out on every device, including this one. Sign in again with your e-mail anytime.": "让此账号在所有设备上退出登录，包括这台。随时可以用邮箱重新登录。",
 }
