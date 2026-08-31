@@ -386,6 +386,17 @@ const routes = {
     json(res, 200, { user: { id: user.id, name: user.name, email: user.email || null, admin: isAdmin(user) } });
   },
 
+  'PUT /api/me/name': async (req, res) => {
+    const user = readSession(req);
+    if (!user) return json(res, 401, { error: 'not signed in' });
+    const body = await readBody(req);
+    const name = String(body.name || '').trim().slice(0, 40);
+    if (!name) return json(res, 400, { error: '用户名不能为空' });
+    user.name = name;
+    saveDb();
+    json(res, 200, { user: { id: user.id, name: user.name, email: user.email || null, admin: isAdmin(user) } });
+  },
+
   /* ---- auth: e-mail + code ---- */
   'POST /api/auth/send-code': async (req, res) => {
     const body = await readBody(req);

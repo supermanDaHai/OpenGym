@@ -4,7 +4,7 @@ import { useStore, DEF, hasData } from '../store/useStore.js'
 import { useUI } from '../store/useUI.js'
 import { ACCENTS, todayISO, localTZ } from '../lib/format.js'
 import { effortOf } from '../lib/history.js'
-import { IS_ANDROID } from '../lib/api.js'
+import { IS_ANDROID, api } from '../lib/api.js'
 import { AuthCard } from './Login.jsx'
 import { pushSupported, enablePush, disablePush, sendTestPush } from '../lib/push.js'
 import { wakeLockSupported } from '../lib/wakelock.js'
@@ -13,7 +13,7 @@ import { DEMO, REPO } from '../lib/demo.js'
 import { MOBILE, shareExport, syncReminder } from '../lib/mobile.js'
 import { loadStarterPlan, confirmSheet, importFromApp } from '../sheets.jsx'
 import Icon from '../components/Icon.jsx'
-import { Section, Row, SelectRow, Switch, Segmented, Button } from '../components/ui.jsx'
+import { Section, Row, SelectRow, Switch, Segmented, Button, TextField } from '../components/ui.jsx'
 
 export default function Settings() {
   const nav = useNavigate()
@@ -50,6 +50,30 @@ export default function Settings() {
     rd.readAsText(f)
   }
   const signInHere = () => useUI.getState().openSheet(close => <AuthCard onDone={close} />)
+  const editName = () => {
+    const { openSheet } = useUI.getState()
+    openSheet(close => {
+      const [draft, setDraft] = useState(user.name)
+      const save = async () => {
+        const name = (draft || '').trim()
+        if (!name) { toast('用户名不能为空'); return }
+        try {
+          const res = await api('/api/me/name', { method: 'PUT', body: JSON.stringify({ name }) })
+          setUser(res.user)
+          toast('用户名已更新')
+          close()
+        } catch (e) { toast(e.message) }
+      }
+      return <>
+        <h3>修改用户名</h3>
+        <TextField value={draft} onChange={e => setDraft(e.target.value)} placeholder="输入新用户名" autoFocus />
+        <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+          <Button onClick={close} style={{ flex: 1 }}>取消</Button>
+          <Button primary onClick={save} style={{ flex: 1 }}>保存</Button>
+        </div>
+      </>
+    })
+  }
   // Ends the profile's sessions on every device — this one included, so on success it lands in
   // the same place as the plain sign-out above (home, local data cleared). On failure nothing
   // local is touched: still signed in here, and say so rather than leaving a half-signed-out app.
@@ -82,7 +106,7 @@ export default function Settings() {
         <Row icon="rocket" iconTint="var(--indigo)" title={t('Self-host openGym')} subtitle={t('E-mail sign-in, sync across your devices, your own data.')} accessory="chevron"
           onClick={() => window.open(REPO, '_blank', 'noopener')} />
       </> : user ? <>
-        <Row icon="personCircle" iconTint="var(--grey)" title={user.name} subtitle={user.email || t('Signed in with account')} />
+        <Row icon="personCircle" iconTint="var(--grey)" title={user.name} subtitle={user.email || t('Signed in with account')} accessory="chevron" onClick={editName} />
         {user.admin && <Row icon="wrench" iconTint="var(--indigo)" title={t('Admin dashboard')} subtitle="独立登录 · 数据看板 / 用户 / 邀请码" accessory="chevron" onClick={() => nav('/admin')} />}
         <Row icon="signOut" iconTint="var(--red)" title={t('Sign out')} danger onClick={() => confirmSheet({ title: t('Sign out?'), message: t('Your data is synced to your profile first, then cleared from this device.'), confirmText: t('Sign out'), danger: true, onConfirm: () => { signOut(); nav('/home') } })} />
         <Row icon="shield" iconTint="var(--red)" title={t('Sign out everywhere')} subtitle={t('Ends this profile’s sessions on all your devices.')} danger onClick={signOutEverywhere} />
